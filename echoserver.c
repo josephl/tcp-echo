@@ -1,4 +1,9 @@
 /*
+ * Copyright © 2012 Joseph Lee
+ * This program is licensed under the MIT License.
+ * CS 494
+ * Assignment #2
+ *
  * Copyright © 2012 Bart Massey
  * [This program is licensed under the "MIT License"]
  * Please see the file COPYING in the source
@@ -39,6 +44,7 @@ int main() {
     time_t now;
     struct tm *tp;
     char buf[512];
+    char *echo;
 
     void (*sr)(int) = signal(SIGCHLD, sigchild);
     assert(sr != SIG_ERR);
@@ -65,41 +71,63 @@ int main() {
             while(1) {
                 bzero((void *)buf, 512);
                 r = read(s0, buf, 512);
+
+                /* half-close read socket */
+                assert(shutdown(s0, SHUT_RD) == 0);
+
                 /* print bytes to stdin */
                 printf("%s\n", buf);
                 for (i = 0; i < strlen(buf); i++)
                     printf("%02x ", buf[i]);
                 printf("\n");
 
-                /* parse client input */
-                if (!strcmp("VERSION\n", buf)) {
-                    // write '1'
-                    r = write(s0, "1\n", 2);
+                /* discard line ending from buffer */
+                for (i = strlen(buf) - 1; i > 0; i--) {
+                    if (buf[i] == '\n') {
+                        buf[i] = '\0';
+                        if (i > 0 && buf[i - 1] == '\r')
+                            buf[i - 1] = '\0';
+                        break;
+                    }
                 }
-                else if (!strcmp("DAYTIME\n", buf)) {
+
+                /* parse client input */
+                if (!strcmp("VERSION", buf)) {
+                    // write '1'
+                    r = write(s0, "1\r\n", 3);
+                }
+                else if (!strcmp("DAYTIME", buf)) {
                     now = time(NULL);
                     tp = localtime(&now);
                     strcpy(buf, asctime(tp));
 
                     r = write(s0, buf, strlen(buf));
                 }
-                else if (!strcmp("RANDOM\n", buf)) {
+                else if (!strcmp("RANDOM", buf)) {
                     srandom(time(NULL));
-                    char rnum[3];
-                    rnum[1] = '\n';
-                    rnum[2] = '\0';
+                    char rnum[4];
+                    rnum[1] = '\r';
+                    rnum[2] = '\n';
+                    rnum[3] = '\0';
                     rnum[0] = '0' + ((unsigned int) random() % 10);
                     r = write(s0, rnum, strlen(rnum));
                 }
-                else {
-                    assert(r != -1);
-                    printf("Child %d: read %d bytes\n", pid, r);
-                    if (r == 0)
-                        break;
-                    r = write(s0, buf, r);
+                else {      /* echo */
+                    echo = strstr(buf, "ECHO ");
+                    if (echo) {
+                        echo += 5;
+                        i = strlen(echo);
+                        echo[i] = '\r';
+                        echo[i + 1] = '\n';
+                        echo[i + 2] = '\0';
+                        r = write(s0, echo, strlen(echo));
+                        assert(r != -1);
+                    }
+                    else {
+                        r = write(s0, "Unknown command\n", 16);
+                    }
                 }
-                assert(r != -1);
-                printf("Child %d: wrote %d bytes\n", pid, r);
+                assert(shutdown(s0, SHUT_WR) == 0);
             }
             printf("Child %d: connection closed\n", pid);
             (void) close(s0);
