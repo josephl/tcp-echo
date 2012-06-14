@@ -127,6 +127,7 @@ int main() {
                         r = write(s0, "Unknown command\n", 16);
                     }
                 }
+                /* full-close, remaining write socket */
                 assert(shutdown(s0, SHUT_WR) == 0);
             }
             printf("Child %d: connection closed\n", pid);

@@ -1,0 +1,29 @@
+Copyright © 2012 Joseph Lee <josephl@cs.pdx.edu>
+http://github.com/josephl/tcp-echo
+
+This program is available under the MIT Public License
+See file COPYING for more information.
+
+TCP Info Server
+CS 494 - Assignment #2
+
+Compile this program using accompanying Makefile.
+Executable: echoserver
+
+This program listens to port 11466 and accepts the following
+case-sensitive commands:
+
+VERSION
+    Version number: ('1')
+DAYTIME
+    Current date/time in ctime format (RFC 2822)
+RANDOM
+    Random number 0-9
+ECHO <string>
+    Echos given <string>.
+
+Using Bart Massey's existing TCP Echo server code, I modified the
+echo server read in commands from client, then half-close the read
+part of the socket of the connection. Then, the server parses the
+command, replies with the appropriate response, and closes the
+write part of the socket connection.
